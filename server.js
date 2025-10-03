@@ -315,6 +315,19 @@ app.get('/api/location', (req, res) => {
   }
 });
 
+// Debug endpoint to see headers (helpful for troubleshooting IP detection)
+app.get('/debug/headers', (req, res) => {
+  res.json({
+    headers: req.headers,
+    detectedIp: getClientIp(req),
+    cleanedIp: cleanIp(getClientIp(req)),
+    connectionInfo: {
+      socketRemoteAddress: req.socket?.remoteAddress,
+      ip: req.ip
+    }
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
