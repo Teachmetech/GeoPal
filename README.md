@@ -88,7 +88,7 @@ curl http://localhost:3000/api/location
 curl http://localhost:3000/api/location?ip=185.223.152.25
 ```
 
-**Response:**
+**Success Response:**
 ```json
 {
   "status": "success",
@@ -105,6 +105,27 @@ curl http://localhost:3000/api/location?ip=185.223.152.25
   "as": "AS396356 Latitude.sh",
   "isp": "Latitude.sh",
   "org": "IPXO"
+}
+```
+
+**Error Responses:**
+
+Invalid IP format:
+```json
+{
+  "status": "fail",
+  "message": "Invalid or missing IP address",
+  "query": "not-an-ip"
+}
+```
+
+Private/Local IP:
+```json
+{
+  "status": "fail",
+  "message": "Cannot geolocate private/local IP addresses",
+  "query": "192.168.1.1",
+  "note": "Private IP ranges (10.x, 192.168.x, 172.16-31.x) and localhost cannot be geolocated"
 }
 ```
 
@@ -164,14 +185,33 @@ This service attempts to download and use the following GeoLite2 databases:
 4. **Lookup**: Queries MaxMind databases for geolocation information
 5. **Response**: Returns formatted JSON with all available data
 
-## IP Detection
+## IP Detection & Validation
 
-The server automatically detects the client's IP address by checking:
-- `X-Forwarded-For` header (for proxies/load balancers)
-- `X-Real-IP` header
-- Direct connection IP
+### Automatic IP Detection
 
-Works seamlessly behind reverse proxies like Nginx or load balancers.
+The server automatically detects the client's IP address by checking (in order):
+1. `CF-Connecting-IP` header (Cloudflare Tunnel/Proxy)
+2. `X-Forwarded-For` header (proxies/load balancers)
+3. `X-Real-IP` header
+4. Direct connection IP
+
+Works seamlessly behind reverse proxies like Nginx, Cloudflare Tunnel, or load balancers.
+
+### IP Validation
+
+All IP addresses (auto-detected or provided via query parameter) are validated:
+
+✅ **Accepted:**
+- Valid IPv4 addresses (e.g., `8.8.8.8`)
+- Valid IPv6 addresses (e.g., `2001:4860:4860::8888`)
+- Public routable IP addresses
+
+❌ **Rejected:**
+- Invalid IP formats
+- Private IP ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`)
+- Localhost addresses (`127.0.0.1`, `::1`)
+- Link-local addresses (`169.254.0.0/16`, `fe80::/10`)
+- ULA addresses (`fc00::/7`, `fd00::/8`)
 
 ## Development
 

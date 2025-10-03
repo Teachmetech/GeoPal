@@ -169,10 +169,53 @@ function getClientIp(req) {
  * Clean IPv6-mapped IPv4 addresses
  */
 function cleanIp(ip) {
-  if (ip.startsWith('::ffff:')) {
+  if (ip && ip.startsWith('::ffff:')) {
     return ip.substring(7);
   }
   return ip;
+}
+
+/**
+ * Validate IP address format
+ */
+function isValidIp(ip) {
+  if (!ip || typeof ip !== 'string') {
+    return false;
+  }
+
+  // IPv4 validation - more strict
+  const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  
+  // IPv6 validation - comprehensive
+  const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
+  
+  return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+}
+
+/**
+ * Check if IP is a private/local address
+ */
+function isPrivateIp(ip) {
+  if (!ip) return false;
+  
+  // Localhost
+  if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') {
+    return true;
+  }
+  
+  // Private IPv4 ranges
+  if (ip.startsWith('10.') || 
+      ip.startsWith('192.168.') || 
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(ip)) {
+    return true;
+  }
+  
+  // Private IPv6 ranges
+  if (ip.startsWith('fd') || ip.startsWith('fe80:') || ip.startsWith('fc')) {
+    return true;
+  }
+  
+  return false;
 }
 
 // API endpoint for geolocation
@@ -182,24 +225,22 @@ app.get('/api/location', (req, res) => {
     let ip = req.query.ip || getClientIp(req);
     ip = cleanIp(ip);
 
-    // Validate IP format (basic check)
-    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-    const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
-    
-    if (!ipv4Regex.test(ip) && !ipv6Regex.test(ip)) {
-      // Handle localhost
-      if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost') {
-        return res.json({
-          status: 'fail',
-          message: 'localhost detected - cannot geolocate local addresses',
-          query: ip
-        });
-      }
-      
+    // Validate IP format
+    if (!isValidIp(ip)) {
       return res.json({
         status: 'fail',
-        message: 'Invalid IP address format',
-        query: ip
+        message: 'Invalid or missing IP address',
+        query: ip || 'none'
+      });
+    }
+
+    // Check if it's a private/local IP
+    if (isPrivateIp(ip)) {
+      return res.json({
+        status: 'fail',
+        message: 'Cannot geolocate private/local IP addresses',
+        query: ip,
+        note: 'Private IP ranges (10.x, 192.168.x, 172.16-31.x) and localhost cannot be geolocated'
       });
     }
 
@@ -236,11 +277,18 @@ app.get('/api/location', (req, res) => {
       }
     }
 
-    // If no data was found
+    // Check if databases are loaded
     if (!cityLookup && !asnLookup) {
-      result.status = 'fail';
-      result.message = 'MaxMind databases not loaded. Please set MAXMIND_LICENSE_KEY environment variable.';
-    } else if (!result.country && !result.as) {
+      // No databases loaded at all
+      return res.json({
+        status: 'fail',
+        query: ip,
+        message: 'MaxMind databases not loaded. Please set MAXMIND_LICENSE_KEY environment variable.'
+      });
+    }
+
+    // Check if we found any data
+    if (!result.country && !result.as) {
       result.status = 'fail';
       result.message = 'No geolocation data found for this IP address';
     }
