@@ -6,8 +6,12 @@ const fs = require('fs');
 const path = require('path');
 const tar = require('tar');
 const { promisify } = require('util');
+const cors = require('cors');
 
 const app = express();
+
+// Enable CORS for all routes
+app.use(cors());
 const PORT = process.env.PORT || 3000;
 const MAXMIND_LICENSE_KEY = process.env.MAXMIND_LICENSE_KEY;
 const CRON_SCHEDULE = process.env.CRON_SCHEDULE || '0 0 1 * *'; // Default: monthly (1st day of month at midnight)

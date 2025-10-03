@@ -10,6 +10,7 @@ A lightweight Node.js Express server that provides IP geolocation services using
 - 🐳 **Dockerized** - Easy deployment with Docker and Docker Compose
 - 🚀 **Lightweight** - Minimal dependencies, fast performance
 - 📊 **Health Check Endpoint** - Monitor database status and last update time
+- 🌐 **CORS Enabled** - Can be called from any origin (perfect for frontend apps)
 
 ## Quick Start
 
