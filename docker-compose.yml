@@ -1,0 +1,15 @@
+services:
+  geopal:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - MAXMIND_LICENSE_KEY=${MAXMIND_LICENSE_KEY}
+      - PORT=3000
+      - CRON_SCHEDULE=0 0 1 * *
+    volumes:
+      # Persist MaxMind databases across container restarts
+      - ./data:/app/data
+    restart: unless-stopped
+    container_name: geopal
+
