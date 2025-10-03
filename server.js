@@ -147,7 +147,13 @@ async function updateDatabases() {
  * Extract client IP address from request
  */
 function getClientIp(req) {
-  // Check various headers for the real IP (in case of proxies/load balancers)
+  // Check Cloudflare headers first (for Cloudflare Tunnel/Proxy)
+  const cfConnectingIp = req.headers['cf-connecting-ip'];
+  if (cfConnectingIp) {
+    return cfConnectingIp;
+  }
+  
+  // Check other common proxy headers
   const forwarded = req.headers['x-forwarded-for'];
   if (forwarded) {
     return forwarded.split(',')[0].trim();
