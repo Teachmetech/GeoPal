@@ -11,7 +11,14 @@ const cors = require('cors');
 const app = express();
 
 // Enable CORS for all routes
-app.use(cors());
+// Allow any origin, only GET and OPTIONS
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "OPTIONS"],
+}));
+
+// Handle preflight requests explicitly
+app.options("*", cors());
 const PORT = process.env.PORT || 3000;
 const MAXMIND_LICENSE_KEY = process.env.MAXMIND_LICENSE_KEY;
 const CRON_SCHEDULE = process.env.CRON_SCHEDULE || '0 0 1 * *'; // Default: monthly (1st day of month at midnight)
